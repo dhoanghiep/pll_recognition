@@ -74,11 +74,10 @@ Get list of available PLL cases
 ## PLL Cases
 
 The app supports all 21 PLL cases:
-- **Adjacent Corner Swaps**: Aa, Ab
-- **Diagonal Corner Swaps**: E  
-- **Adjacent Edge Swaps**: Ra, Rb, Ja, Jb, T, F
-- **Diagonal Edge Swaps**: Na, Nb, V, Y
-- **Double Swaps**: H, Ua, Ub, Z
+- **Corner Swaps**: Aa, Ab
+- **Edge + Adjacent Corner Swaps**: Ra, Rb, Ja, Jb, T, F, E
+- **Edge + Diagonal Corner Swaps**: Na, Nb, V, Y
+- **Edge Swaps**: H, Ua, Ub, Z
 - **G Perms**: Ga, Gb, Gc, Gd
 
 ## Project Structure
