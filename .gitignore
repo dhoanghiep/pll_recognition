@@ -217,3 +217,5 @@ venv/
 # frontend
 frontend/build/
 frontend/node_modules/
+frontend/package-lock.json
+visualize.ipynb

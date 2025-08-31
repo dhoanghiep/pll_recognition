@@ -14,7 +14,7 @@ Your FastAPI + React Rubik's cube application is now fully functional with:
 ### ✅ Frontend Features
 - **Modern React UI**: Clean, responsive interface with tabbed navigation
 - **Move Input**: Standard cube notation support (R, U, R', F2, etc.)
-- **PLL Selection**: Interactive buttons for all 22 PLL cases
+- **PLL Selection**: Interactive buttons for 21 PLL cases
 - **Real-time Visualization**: Instant cube rendering from backend
 - **Error Handling**: User-friendly error messages and loading states
 
@@ -146,7 +146,7 @@ Your Rubik's cube visualization application is now fully functional! You can:
 
 1. ✅ Input moves and see 3D cube visualizations
 2. ✅ Select PLL cases and see resulting cube states
-3. ✅ Browse all 22 PLL algorithms interactively
+3. ✅ Browse all 21 PLL algorithms interactively
 4. ✅ Use a modern, responsive web interface
 5. ✅ Access a robust RESTful API
 

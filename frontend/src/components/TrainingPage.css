@@ -6,27 +6,25 @@
 }
 
 .training-page.drawer-open {
-  max-width: calc(100vw - 440px); /* Account for drawer width + padding */
-  margin-left: 2rem;
-  margin-right: 2rem;
+  max-width: 1200px; /* Keep same component size */
+  margin-right: 420px; /* Shift right to accommodate drawer */
 }
 
 @media (max-width: 1600px) {
   .training-page.drawer-open {
-    max-width: calc(100vw - 390px); /* Smaller drawer on medium screens */
+    margin-right: 370px; /* Smaller drawer on medium screens */
   }
 }
 
 @media (max-width: 1200px) {
   .training-page.drawer-open {
-    max-width: calc(100vw - 340px);
+    margin-right: 320px;
   }
 }
 
 @media (max-width: 768px) {
   .training-page.drawer-open {
-    max-width: 1200px;
-    margin: 0 auto;
+    margin-right: 0; /* Full overlay on mobile */
   }
 }
 

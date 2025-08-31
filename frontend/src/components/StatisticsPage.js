@@ -10,10 +10,26 @@ function StatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('accuracy'); // accuracy, average_time, total_attempts
+  
+  // Session management state
+  const [activeTab, setActiveTab] = useState('overall'); // overall, sessions
+  const [sessions, setSessions] = useState([]);
+  const [selectedSessions, setSelectedSessions] = useState([]);
+  const [sessionStats, setSessionStats] = useState(null);
+  const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
     fetchStatistics();
+    if (activeTab === 'sessions') {
+      fetchSessions();
+    }
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'sessions' && sessions.length === 0) {
+      fetchSessions();
+    }
+  }, [activeTab]);
 
   const fetchStatistics = async () => {
     setLoading(true);
@@ -56,6 +72,81 @@ function StatisticsPage() {
     }
   };
 
+  const fetchSessions = async () => {
+    setLoadingSessions(true);
+    setError('');
+    try {
+      const response = await axios.get(`${API_BASE_URL}/training/sessions`);
+      setSessions(response.data);
+    } catch (err) {
+      console.error('Error fetching sessions:', err);
+      setError('Failed to load sessions. Make sure the backend is running.');
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const deleteSessions = async () => {
+    if (selectedSessions.length === 0) {
+      alert('Please select sessions to delete');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedSessions.length} session(s)? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
+    setLoadingSessions(true);
+    try {
+      await axios.post(`${API_BASE_URL}/training/sessions/delete`, selectedSessions);
+      setSelectedSessions([]);
+      await fetchSessions(); // Refresh sessions
+      await fetchStatistics(); // Refresh overall stats
+      alert('Sessions deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting sessions:', err);
+      setError('Failed to delete sessions.');
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const generateSessionStats = async () => {
+    if (selectedSessions.length === 0) {
+      alert('Please select sessions to generate statistics for');
+      return;
+    }
+
+    setLoadingSessions(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/training/sessions_stats`, selectedSessions);
+      setSessionStats(response.data);
+    } catch (err) {
+      console.error('Error generating session statistics:', err);
+      setError('Failed to generate session statistics.');
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const handleSessionToggle = (sessionId) => {
+    setSelectedSessions(prev => 
+      prev.includes(sessionId)
+        ? prev.filter(id => id !== sessionId)
+        : [...prev, sessionId]
+    );
+  };
+
+  const selectAllSessions = () => {
+    setSelectedSessions(sessions.map(s => s.id));
+  };
+
+  const deselectAllSessions = () => {
+    setSelectedSessions([]);
+  };
+
   const formatTime = (seconds) => {
     if (seconds === 0) return 'N/A';
     return `${seconds.toFixed(2)}s`;
@@ -63,6 +154,21 @@ function StatisticsPage() {
 
   const formatAccuracy = (accuracy) => {
     return `${accuracy.toFixed(1)}%`;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDuration = (seconds) => {
+    if (!seconds) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+    return `${remainingSeconds}s`;
   };
 
   const getPerformanceColor = (accuracy) => {
@@ -125,8 +231,24 @@ function StatisticsPage() {
         </div>
       )}
 
-      {/* Overall Statistics */}
-      {overallStats && (
+      {/* Tab Navigation */}
+      <div className="stats-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'overall' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overall')}
+        >
+          📈 Overall Statistics
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'sessions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('sessions')}
+        >
+          📋 Session Management
+        </button>
+      </div>
+
+      {/* Overall Statistics Tab */}
+      {activeTab === 'overall' && overallStats && (
         <div className="overall-stats">
           <h2>📈 Overall Performance</h2>
           <div className="overall-grid">
@@ -159,6 +281,7 @@ function StatisticsPage() {
       )}
 
       {/* PLL-specific Statistics */}
+      {activeTab === 'overall' && (
       <div className="pll-stats">
         <div className="pll-stats-header">
           <h2>🧩 PLL Performance</h2>
@@ -254,9 +377,10 @@ function StatisticsPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Performance Insights */}
-      {pllStats.length > 0 && (
+      {activeTab === 'overall' && pllStats.length > 0 && (
         <div className="insights">
           <h2>💡 Performance Insights</h2>
           <div className="insights-grid">
@@ -312,6 +436,157 @@ function StatisticsPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Session Management Tab */}
+      {activeTab === 'sessions' && (
+        <div className="session-management">
+          <div className="session-controls">
+            <div className="session-header">
+              <h2>📋 Training Sessions</h2>
+              <div className="session-actions">
+                <button 
+                  onClick={fetchSessions} 
+                  className="refresh-button"
+                  disabled={loadingSessions}
+                >
+                  🔄 Refresh Sessions
+                </button>
+                <button 
+                  onClick={selectAllSessions} 
+                  className="select-button"
+                  disabled={sessions.length === 0}
+                >
+                  ✅ Select All
+                </button>
+                <button 
+                  onClick={deselectAllSessions} 
+                  className="select-button"
+                  disabled={selectedSessions.length === 0}
+                >
+                  ❌ Deselect All
+                </button>
+                <button 
+                  onClick={generateSessionStats} 
+                  className="stats-button"
+                  disabled={selectedSessions.length === 0 || loadingSessions}
+                >
+                  📊 Generate Stats
+                </button>
+                <button 
+                  onClick={deleteSessions} 
+                  className="delete-button"
+                  disabled={selectedSessions.length === 0 || loadingSessions}
+                >
+                  🗑️ Delete Selected
+                </button>
+              </div>
+            </div>
+
+            <div className="selection-summary">
+              <span>
+                {selectedSessions.length} of {sessions.length} sessions selected
+              </span>
+            </div>
+          </div>
+
+          {loadingSessions ? (
+            <div className="loading-container">
+              <div className="loading-spinner">
+                <div className="spinner"></div>
+                <p>Loading sessions...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="sessions-list">
+              {sessions.length === 0 ? (
+                <div className="no-sessions">
+                  <p>No training sessions found. Start training to see sessions here!</p>
+                </div>
+              ) : (
+                sessions.map((session) => (
+                  <div key={session.id} className="session-item">
+                    <div className="session-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedSessions.includes(session.id)}
+                        onChange={() => handleSessionToggle(session.id)}
+                      />
+                    </div>
+                    <div className="session-details">
+                      <div className="session-main">
+                        <div className="session-date">
+                          📅 {formatDate(session.start_time)}
+                          {session.end_time && (
+                            <span className="session-duration">
+                              ⏱️ {formatDuration(session.duration_seconds)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="session-stats">
+                          <span className="session-attempts">
+                            {session.total_attempts} attempts
+                          </span>
+                          <span className="session-accuracy" style={{color: getPerformanceColor(session.accuracy)}}>
+                            {formatAccuracy(session.accuracy)} accuracy
+                          </span>
+                        </div>
+                      </div>
+                      <div className="session-plls">
+                        <div className="pll-count">
+                          {session.selected_pll_count} PLLs: 
+                        </div>
+                        <div className="pll-list">
+                          {session.selected_plls.slice(0, 8).map((pll, index) => (
+                            <span key={index} className="pll-tag">{pll}</span>
+                          ))}
+                          {session.selected_plls.length > 8 && (
+                            <span className="pll-more">+{session.selected_plls.length - 8} more</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Session Statistics Results */}
+          {sessionStats && (
+            <div className="session-stats-results">
+              <h3>📊 Selected Sessions Statistics</h3>
+              <div className="session-overall-grid">
+                <div className="overall-card">
+                  <div className="card-value">{sessionStats.total_sessions}</div>
+                  <div className="card-label">Sessions</div>
+                </div>
+                <div className="overall-card">
+                  <div className="card-value">{sessionStats.total_attempts}</div>
+                  <div className="card-label">Total Attempts</div>
+                </div>
+                <div className="overall-card">
+                  <div className="card-value">{sessionStats.correct_attempts}</div>
+                  <div className="card-label">Correct</div>
+                </div>
+                <div className="overall-card">
+                  <div className="card-value">{formatAccuracy(sessionStats.overall_accuracy)}</div>
+                  <div className="card-label">Accuracy</div>
+                </div>
+                <div className="overall-card">
+                  <div className="card-value">{formatTime(sessionStats.average_reaction_time)}</div>
+                  <div className="card-label">Avg Time</div>
+                </div>
+                <div className="overall-card">
+                  <div className="card-value">{formatDuration(sessionStats.total_training_time)}</div>
+                  <div className="card-label">Total Time</div>
+                </div>
+              </div>
+
+
+            </div>
+          )}
         </div>
       )}
     </div>

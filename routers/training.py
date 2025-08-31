@@ -247,6 +247,145 @@ def reset_training_database(db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to reset database: {str(e)}")
 
+@router.get("/sessions")
+def get_all_sessions(db: Session = Depends(get_db)):
+    """Get all training sessions with summary information"""
+    sessions = db.query(TrainingSession).order_by(TrainingSession.start_time.desc()).all()
+    
+    session_summaries = []
+    for session in sessions:
+        # Get attempt count for this session
+        attempt_count = db.query(TrainingAttempt).filter(
+            TrainingAttempt.session_id == session.id
+        ).count()
+        
+        # Calculate session duration if ended
+        duration = None
+        if session.end_time:
+            duration = (session.end_time - session.start_time).total_seconds()
+        
+        # Parse selected PLLs
+        selected_plls = json.loads(session.selected_plls) if session.selected_plls else []
+        
+        session_summaries.append({
+            "id": session.id,
+            "start_time": session.start_time.isoformat(),
+            "end_time": session.end_time.isoformat() if session.end_time else None,
+            "duration_seconds": duration,
+            "total_attempts": session.total_attempts,
+            "correct_attempts": session.correct_attempts,
+            "accuracy": (session.correct_attempts / session.total_attempts * 100) if session.total_attempts > 0 else 0.0,
+            "attempt_count": attempt_count,
+            "selected_plls": selected_plls,
+            "selected_pll_count": len(selected_plls)
+        })
+    
+    return session_summaries
+
+@router.post("/sessions/delete")
+def delete_sessions(session_ids: List[int], db: Session = Depends(get_db)):
+    """Delete selected training sessions and their attempts"""
+    try:
+        # Delete attempts for these sessions
+        db.query(TrainingAttempt).filter(
+            TrainingAttempt.session_id.in_(session_ids)
+        ).delete(synchronize_session=False)
+        
+        # Delete the sessions
+        deleted_count = db.query(TrainingSession).filter(
+            TrainingSession.id.in_(session_ids)
+        ).delete(synchronize_session=False)
+        
+        db.commit()
+        
+        return {
+            "message": f"Successfully deleted {deleted_count} sessions",
+            "deleted_count": deleted_count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete sessions: {str(e)}")
+
+@router.post("/sessions_stats")  
+def get_sessions_statistics(session_ids: List[int], db: Session = Depends(get_db)):
+    """Get statistics for selected sessions"""
+    if not session_ids:
+        return {
+            "total_sessions": 0,
+            "total_attempts": 0,
+            "correct_attempts": 0,
+            "overall_accuracy": 0.0,
+            "average_reaction_time": 0.0,
+            "total_training_time": 0.0,
+            "pll_breakdown": []
+        }
+    
+    # Get session data
+    sessions = db.query(TrainingSession).filter(
+        TrainingSession.id.in_(session_ids)
+    ).all()
+    
+    # Get attempts for these sessions
+    attempts = db.query(TrainingAttempt).filter(
+        TrainingAttempt.session_id.in_(session_ids)
+    ).all()
+    
+    total_sessions = len(sessions)
+    total_attempts = len(attempts)
+    correct_attempts = sum(1 for a in attempts if a.is_correct)
+    overall_accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0.0
+    
+    # Calculate average reaction time for correct attempts
+    correct_times = [a.reaction_time for a in attempts if a.is_correct]
+    average_reaction_time = sum(correct_times) / len(correct_times) if correct_times else 0.0
+    
+    # Calculate total training time
+    total_training_time = 0.0
+    for session in sessions:
+        if session.end_time:
+            total_training_time += (session.end_time - session.start_time).total_seconds()
+    
+    # PLL breakdown
+    pll_breakdown = {}
+    for attempt in attempts:
+        pll = attempt.pll_case
+        if pll not in pll_breakdown:
+            pll_breakdown[pll] = {"total": 0, "correct": 0, "times": []}
+        
+        pll_breakdown[pll]["total"] += 1
+        if attempt.is_correct:
+            pll_breakdown[pll]["correct"] += 1
+            pll_breakdown[pll]["times"].append(attempt.reaction_time)
+    
+    # Format PLL breakdown
+    pll_stats = []
+    for pll, stats in pll_breakdown.items():
+        accuracy = (stats["correct"] / stats["total"] * 100) if stats["total"] > 0 else 0.0
+        avg_time = sum(stats["times"]) / len(stats["times"]) if stats["times"] else 0.0
+        best_time = min(stats["times"]) if stats["times"] else 0.0
+        
+        pll_stats.append({
+            "pll_case": pll,
+            "total_attempts": stats["total"],
+            "correct_attempts": stats["correct"],
+            "accuracy": accuracy,
+            "average_time": avg_time,
+            "best_time": best_time
+        })
+    
+    # Sort by accuracy descending
+    pll_stats.sort(key=lambda x: -x["accuracy"])
+    
+    return {
+        "total_sessions": total_sessions,
+        "total_attempts": total_attempts,
+        "correct_attempts": correct_attempts,
+        "overall_accuracy": overall_accuracy,
+        "average_reaction_time": average_reaction_time,
+        "total_training_time": total_training_time,
+        "pll_breakdown": pll_stats
+    }
+
 def generate_training_question(selected_plls: List[str], pll_data: dict, elev: float = 30, azim: float = 45) -> TrainingQuestion:
     """Generate a random training question from selected PLLs"""
     

@@ -461,42 +461,6 @@ function TrainingPage() {
           </div>
         </div>
 
-        <div className="view-angle-controls">
-          <h3>Initial Cube Viewing Angles</h3>
-          <p className="angle-info">Set the starting angle - you can adjust these during training!</p>
-          <div className="angle-controls">
-            <div className="angle-control">
-              <label htmlFor="elev-input">Elevation: {elev}°</label>
-              <input
-                id="elev-input"
-                type="range"
-                min="-90"
-                max="90"
-                value={elev}
-                onChange={(e) => setElev(parseInt(e.target.value))}
-                className="angle-slider"
-              />
-            </div>
-            <div className="angle-control">
-              <label htmlFor="azim-input">Azimuth: {azim}°</label>
-              <input
-                id="azim-input"
-                type="range"
-                min="0"
-                max="360"
-                value={azim}
-                onChange={(e) => setAzim(parseInt(e.target.value))}
-                className="angle-slider"
-              />
-            </div>
-            <button 
-              onClick={() => {setElev(30); setAzim(45);}}
-              className="reset-angles-button"
-            >
-              Reset to Default
-            </button>
-          </div>
-        </div>
 
         {error && (
           <div className="error-message">
@@ -521,7 +485,7 @@ function TrainingPage() {
             <li>⏱️ Timer starts when each question appears</li>
             <li>🎛️ Adjust viewing angles in real-time while the timer runs!</li>
             <li>✅ Click the correct PLL name - answers submit automatically!</li>
-            <li>🎯 All 22 PLL cases are available as answer options</li>
+            <li>🎯 All 21 PLL cases are available as answer options</li>
             <li>🔄 Continue until you want to stop</li>
             <li>📊 View your detailed statistics at the end</li>
           </ul>
