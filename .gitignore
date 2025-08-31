@@ -206,9 +206,14 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# venv
+venv/
+.venv/
+
 
 # database
 *.db
 
-# frontend build
+# frontend
 frontend/build/
+frontend/node_modules/
