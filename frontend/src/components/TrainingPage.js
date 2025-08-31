@@ -43,6 +43,10 @@ function TrainingPage() {
   const [pendingNextQuestion, setPendingNextQuestion] = useState(null);
   const [feedbackTimeout, setFeedbackTimeout] = useState(null);
 
+  // Keyboard input state
+  const [keyboardInput, setKeyboardInput] = useState('');
+  const [keyboardTimeout, setKeyboardTimeout] = useState(null);
+
   // Load available PLLs on component mount
   useEffect(() => {
     const fetchPLLs = async () => {
@@ -77,8 +81,90 @@ function TrainingPage() {
       if (feedbackTimeout) {
         clearTimeout(feedbackTimeout);
       }
+      if (keyboardTimeout) {
+        clearTimeout(keyboardTimeout);
+      }
     };
-  }, [feedbackTimeout]);
+  }, [feedbackTimeout, keyboardTimeout]);
+
+  // Keyboard event handler
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (!trainingMode || !currentQuestion) return;
+
+      const key = event.key.toLowerCase();
+      
+      // Handle Enter key for continue
+      if (key === 'enter' && feedback) {
+        event.preventDefault();
+        if (feedback.isCorrect) {
+          proceedToNextQuestion();
+        } else {
+          proceedToNextQuestion(); // Default to next question for incorrect
+        }
+        return;
+      }
+
+      // Handle Backspace/Delete key for try again
+      if (key === 'backspace' && feedback && !feedback.isCorrect) {
+        event.preventDefault();
+        tryAgain();
+        return;
+      }
+
+      // Handle PLL case input (only when not in feedback mode)
+      if (!feedback && !loading) {
+        // Clear previous timeout
+        if (keyboardTimeout) {
+          clearTimeout(keyboardTimeout);
+        }
+
+        // Add key to input
+        const newInput = keyboardInput + key;
+        setKeyboardInput(newInput);
+
+        // Check for exact matches first
+        const exactMatch = currentQuestion.available_answers.find(
+          answer => answer.toLowerCase() === newInput.toLowerCase()
+        );
+
+        if (exactMatch) {
+          // Found exact match, submit immediately
+          setKeyboardInput('');
+          submitAnswer(exactMatch);
+          return;
+        }
+
+        // Check for partial matches
+        const partialMatches = currentQuestion.available_answers.filter(
+          answer => answer.toLowerCase().startsWith(newInput.toLowerCase())
+        );
+
+        if (partialMatches.length === 0) {
+          // No matches, clear input
+          setKeyboardInput('');
+        } else if (partialMatches.length === 1 && partialMatches[0].toLowerCase() === newInput.toLowerCase()) {
+          // Single exact match, submit
+          setKeyboardInput('');
+          submitAnswer(partialMatches[0]);
+        } else {
+          // Multiple matches or partial match, wait for more input
+          const timeoutId = setTimeout(() => {
+            setKeyboardInput('');
+          }, 2000); // Clear after 2 seconds of no input
+          setKeyboardTimeout(timeoutId);
+        }
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('keydown', handleKeyPress);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [trainingMode, currentQuestion, feedback, loading, keyboardInput, keyboardTimeout]);
 
   const handlePLLToggle = (pll) => {
     setSelectedPLLs(prev =>
@@ -164,7 +250,7 @@ function TrainingPage() {
         // Set timeout as fallback (still auto-proceed if user doesn't click)
         const timeoutId = setTimeout(() => {
           proceedToNextQuestion();
-        }, 2000); // Show feedback for 2 seconds
+        }, 1000); // Show feedback for 1 seconds
         setFeedbackTimeout(timeoutId);
       } else if (!result.is_correct) {
         // Allow user to try again
@@ -173,7 +259,7 @@ function TrainingPage() {
         // Set timeout as fallback (auto-proceed to next question if user doesn't click)
         const timeoutId = setTimeout(() => {
           proceedToNextQuestion();
-        }, 2000); // Show feedback for 2 seconds
+        }, 5000); // Show feedback for 5 seconds
         setFeedbackTimeout(timeoutId);
       }
 
@@ -272,6 +358,7 @@ function TrainingPage() {
     
     setUserAnswer('');
     setFeedback(null);
+    setKeyboardInput(''); // Clear keyboard input
     setStartTime(Date.now());
     setTimerDisplay('0.00');
 
@@ -280,11 +367,16 @@ function TrainingPage() {
       clearTimeout(feedbackTimeout);
       setFeedbackTimeout(null);
     }
+    if (keyboardTimeout) {
+      clearTimeout(keyboardTimeout);
+      setKeyboardTimeout(null);
+    }
   };
 
   const tryAgain = () => {
     setUserAnswer('');
     setFeedback(null);
+    setKeyboardInput(''); // Clear keyboard input
     setStartTime(Date.now());
     setTimerDisplay('0.00');
 
@@ -292,6 +384,10 @@ function TrainingPage() {
     if (feedbackTimeout) {
       clearTimeout(feedbackTimeout);
       setFeedbackTimeout(null);
+    }
+    if (keyboardTimeout) {
+      clearTimeout(keyboardTimeout);
+      setKeyboardTimeout(null);
     }
   };
 
@@ -336,6 +432,9 @@ function TrainingPage() {
           <div className="training-controls">
             <div className="timer-display">
               Time: <span className="timer">{timerDisplay}s</span>
+            </div>
+            <div className="keyboard-hints">
+              <span className="keyboard-hint">⌨️ Type PLL name • Enter: Continue • Backspace: Try Again</span>
             </div>
             <div className="control-buttons">
               <button
@@ -419,6 +518,15 @@ function TrainingPage() {
 
               <div className="answer-section">
                 <h3>Which PLL case is this?</h3>
+                
+                {/* Keyboard input indicator */}
+                {keyboardInput && (
+                  <div className="keyboard-input-indicator">
+                    <span className="keyboard-label">Keyboard input:</span>
+                    <span className="keyboard-text">{keyboardInput}</span>
+                  </div>
+                )}
+
                 <div className="answer-buttons">
                   {currentQuestion.available_answers.map((answer, index) => (
                     <button
@@ -463,7 +571,8 @@ function TrainingPage() {
                     >
                       ➡️ Next Question
                     </button>
-                    <p className="auto-progress-text">Auto-advancing in 2 seconds...</p>
+                    <p className="auto-progress-text">Auto-advancing in 1 seconds...</p>
+                    <p className="keyboard-shortcut-hint">⌨️ Press Enter to continue</p>
                   </div>
                 </div>
               </div>
@@ -487,7 +596,8 @@ function TrainingPage() {
                     >
                       ➡️ Next Question
                     </button>
-                    <p className="auto-progress-text">Auto-proceeding to next question in 2 seconds...</p>
+                    <p className="auto-progress-text">Auto-proceeding to next question in 5 seconds...</p>
+                    <p className="keyboard-shortcut-hint">⌨️ Press Enter to continue • Backspace to try again</p>
                   </div>
                 </div>
               </div>
