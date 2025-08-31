@@ -104,6 +104,22 @@ def submit_training_answer(answer: TrainingAnswer, db: Session = Depends(get_db)
     )
 
 
+@router.post("/get_next_question/{session_id}")
+def get_next_question(session_id: int, elev: float = 30, azim: float = 45, db: Session = Depends(get_db)):
+    """Get the next question for a training session"""
+    session = db.query(TrainingSession).filter(TrainingSession.id == session_id).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Training session not found")
+    
+    # Generate next question
+    selected_plls = json.loads(session.selected_plls)
+    pll_data = load_pll_data()
+    next_question = generate_training_question(selected_plls, pll_data, elev, azim)
+    
+    return next_question
+
+
 @router.post("/end_session/{session_id}")
 def end_training_session(session_id: int, db: Session = Depends(get_db)):
     """End a training session"""

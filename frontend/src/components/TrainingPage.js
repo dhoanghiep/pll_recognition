@@ -253,11 +253,22 @@ function TrainingPage() {
     regenerateCurrentPlot(trainingElev, newAzim);
   };
 
-  const proceedToNextQuestion = () => {
+  const proceedToNextQuestion = async () => {
     if (pendingNextQuestion) {
       setCurrentQuestion(pendingNextQuestion);
       setPendingNextQuestion(null);
+    } else {
+      // Request a new question from the backend
+      try {
+        const response = await axios.post(`${API_BASE_URL}/training/get_next_question/${sessionId}?elev=${trainingElev}&azim=${trainingAzim}`);
+        setCurrentQuestion(response.data);
+      } catch (err) {
+        console.error('Error getting next question:', err);
+        setError('Failed to get next question');
+        return;
+      }
     }
+    
     setUserAnswer('');
     setFeedback(null);
     setStartTime(Date.now());
