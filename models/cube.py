@@ -30,6 +30,7 @@ class TrainingQuestion(BaseModel):
     pll_case: str
     plot: str
     available_answers: List[str]
+    full_algorithm: str  # Store the complete algorithm including random moves
 
 
 class TrainingAnswer(BaseModel):
@@ -63,3 +64,10 @@ class PLLStats(BaseModel):
     best_time: float
     average_time: float
     recent_attempts: List[dict]
+
+
+class RegeneratePlotRequest(BaseModel):
+    pll_case: str
+    full_algorithm: str
+    elev: Optional[float] = 30
+    azim: Optional[float] = 45

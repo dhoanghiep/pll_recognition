@@ -14,6 +14,7 @@ from models.cube import (
     TrainingResult,
     SessionStats,
     PLLStats,
+    RegeneratePlotRequest,
 )
 from database import get_db, TrainingSession, TrainingAttempt, create_tables
 from routers.cube import load_pll_data
@@ -118,6 +119,22 @@ def get_next_question(session_id: int, elev: float = 30, azim: float = 45, db: S
     next_question = generate_training_question(selected_plls, pll_data, elev, azim)
     
     return next_question
+
+
+@router.post("/regenerate_plot")
+def regenerate_training_plot(request: RegeneratePlotRequest):
+    """Regenerate a training plot with the exact same algorithm but different viewing angles"""
+    try:
+        # Create cube and apply the exact same algorithm
+        cube = Cube()
+        cube.rotate(request.full_algorithm)
+        
+        # Generate plot with new viewing angles
+        plot_data = cube.plot_to_base64(elev=request.elev, azim=request.azim)
+        
+        return {"plot": plot_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to regenerate plot: {str(e)}")
 
 
 @router.post("/end_session/{session_id}")
@@ -507,4 +524,5 @@ def generate_training_question(
         pll_case=pll_case,
         plot=plot_data,
         available_answers=all_plls,  # Show all PLLs as options
+        full_algorithm=final_algorithm,  # Store the complete algorithm
     )

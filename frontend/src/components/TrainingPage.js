@@ -225,8 +225,9 @@ function TrainingPage() {
 
     setRegeneratingPlot(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/cube/get_pll_plot`, {
-        pll_name: currentQuestion.pll_case,
+      const response = await axios.post(`${API_BASE_URL}/training/regenerate_plot`, {
+        pll_case: currentQuestion.pll_case,
+        full_algorithm: currentQuestion.full_algorithm,
         elev: newElev,
         azim: newAzim
       });
