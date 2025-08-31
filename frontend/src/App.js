@@ -41,11 +41,6 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <header className="App-header">
-          <h1>🧩 Rubik's Cube Training Platform</h1>
-          <p>Master PLL recognition with visualization and training tools</p>
-        </header>
-        
         <NavigationBar />
 
         <main className="App-main">

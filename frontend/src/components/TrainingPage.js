@@ -9,19 +9,19 @@ function TrainingPage() {
   // PLL selection state
   const [availablePLLs, setAvailablePLLs] = useState([]);
   const [selectedPLLs, setSelectedPLLs] = useState([]);
-  
+
   // Training state
   const [trainingMode, setTrainingMode] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [feedback, setFeedback] = useState(null);
-  
+
   // Timer state
   const [startTime, setStartTime] = useState(null);
   const [reactionTime, setReactionTime] = useState(0);
   const [timerDisplay, setTimerDisplay] = useState('0.00');
-  
+
   // Statistics
   const [sessionStats, setSessionStats] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -81,8 +81,8 @@ function TrainingPage() {
   }, [feedbackTimeout]);
 
   const handlePLLToggle = (pll) => {
-    setSelectedPLLs(prev => 
-      prev.includes(pll) 
+    setSelectedPLLs(prev =>
+      prev.includes(pll)
         ? prev.filter(p => p !== pll)
         : [...prev, pll]
     );
@@ -121,7 +121,7 @@ function TrainingPage() {
       setTimerDisplay('0.00');
       setTrainingElev(elev); // Initialize training angles from setup
       setTrainingAzim(azim);
-      
+
     } catch (err) {
       console.error('Error starting training:', err);
       setError('Failed to start training session.');
@@ -170,10 +170,10 @@ function TrainingPage() {
         // Allow user to try again
         setUserAnswer('');
         
-        // Set timeout as fallback (still auto-proceed if user doesn't click)
+        // Set timeout as fallback (auto-proceed to next question if user doesn't click)
         const timeoutId = setTimeout(() => {
-          tryAgain();
-        }, 3000); // Show feedback for 3 seconds
+          proceedToNextQuestion();
+        }, 2000); // Show feedback for 2 seconds
         setFeedbackTimeout(timeoutId);
       }
 
@@ -195,11 +195,11 @@ function TrainingPage() {
     if (sessionId) {
       try {
         await axios.post(`${API_BASE_URL}/training/end_session/${sessionId}`);
-        
+
         // Get session stats
         const statsResponse = await axios.get(`${API_BASE_URL}/training/session_stats/${sessionId}`);
         setSessionStats(statsResponse.data);
-        
+
       } catch (err) {
         console.error('Error ending session:', err);
       }
@@ -222,7 +222,7 @@ function TrainingPage() {
 
   const regenerateCurrentPlot = async (newElev, newAzim) => {
     if (!currentQuestion || regeneratingPlot) return;
-    
+
     setRegeneratingPlot(true);
     try {
       const response = await axios.post(`${API_BASE_URL}/cube/get_pll_plot`, {
@@ -262,7 +262,7 @@ function TrainingPage() {
     setFeedback(null);
     setStartTime(Date.now());
     setTimerDisplay('0.00');
-    
+
     // Clear any existing timeout
     if (feedbackTimeout) {
       clearTimeout(feedbackTimeout);
@@ -275,7 +275,7 @@ function TrainingPage() {
     setFeedback(null);
     setStartTime(Date.now());
     setTimerDisplay('0.00');
-    
+
     // Clear any existing timeout
     if (feedbackTimeout) {
       clearTimeout(feedbackTimeout);
@@ -326,8 +326,8 @@ function TrainingPage() {
               Time: <span className="timer">{timerDisplay}s</span>
             </div>
             <div className="control-buttons">
-              <button 
-                onClick={() => setDrawerOpen(true)} 
+              <button
+                onClick={() => setDrawerOpen(true)}
                 className="hint-button"
                 title="Open PLL reference guide"
               >
@@ -377,7 +377,7 @@ function TrainingPage() {
                     disabled={regeneratingPlot}
                   />
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     handleTrainingElevChange(30);
                     handleTrainingAzimChange(45);
@@ -396,40 +396,42 @@ function TrainingPage() {
               )}
             </div>
 
-            <div className="cube-display">
-              <img 
-                src={`data:image/png;base64,${currentQuestion.plot}`} 
-                alt="PLL Case visualization"
-                className="training-cube-image"
-              />
-            </div>
-            
-            <div className="answer-section">
-              <h3>Which PLL case is this?</h3>
-              <div className="answer-buttons">
-                {currentQuestion.available_answers.map((answer, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      setUserAnswer(answer);
-                      submitAnswer(answer); // Auto-submit immediately
-                    }}
-                    disabled={loading}
-                    className={`answer-button ${userAnswer === answer ? 'selected' : ''} ${loading ? 'disabled' : ''}`}
-                  >
-                    {answer}
-                  </button>
-                ))}
+            <div className="training-content">
+              <div className="cube-display">
+                <img
+                  src={`data:image/png;base64,${currentQuestion.plot}`}
+                  alt="PLL Case visualization"
+                  className="training-cube-image"
+                />
               </div>
-              
-              {loading && (
-                <div className="submitting-message">
-                  <div className="loading-spinner">
-                    <div className="spinner"></div>
-                    <p>Submitting answer...</p>
-                  </div>
+
+              <div className="answer-section">
+                <h3>Which PLL case is this?</h3>
+                <div className="answer-buttons">
+                  {currentQuestion.available_answers.map((answer, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setUserAnswer(answer);
+                        submitAnswer(answer); // Auto-submit immediately
+                      }}
+                      disabled={loading}
+                      className={`answer-button ${userAnswer === answer ? 'selected' : ''} ${loading ? 'disabled' : ''}`}
+                    >
+                      {answer}
+                    </button>
+                  ))}
                 </div>
-              )}
+
+                {loading && (
+                  <div className="submitting-message">
+                    <div className="loading-spinner">
+                      <div className="spinner"></div>
+                      <p>Submitting answer...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -443,7 +445,7 @@ function TrainingPage() {
                   <h3>Correct!</h3>
                   <p>You got <strong>{feedback.correctAnswer}</strong> in <strong>{feedback.reactionTime.toFixed(2)}s</strong></p>
                   <div className="feedback-actions">
-                    <button 
+                    <button
                       onClick={proceedToNextQuestion}
                       className="next-question-button"
                     >
@@ -461,19 +463,19 @@ function TrainingPage() {
                   <p>You selected: <strong>{feedback.userAnswer}</strong></p>
                   <p>Correct answer: <strong>{feedback.correctAnswer}</strong></p>
                   <div className="feedback-actions">
-                    <button 
+                    <button
                       onClick={tryAgain}
                       className="try-again-button"
                     >
                       🔄 Try Again
                     </button>
-                    <button 
+                    <button
                       onClick={proceedToNextQuestion}
                       className="next-question-button"
                     >
                       ➡️ Next Question
                     </button>
-                    <p className="auto-progress-text">Auto-resuming in 3 seconds...</p>
+                    <p className="auto-progress-text">Auto-proceeding to next question in 2 seconds...</p>
                   </div>
                 </div>
               </div>
@@ -482,9 +484,9 @@ function TrainingPage() {
         )}
 
         {/* PLL Hint Drawer */}
-        <PLLHintDrawer 
-          isOpen={drawerOpen} 
-          onClose={() => setDrawerOpen(false)} 
+        <PLLHintDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
         />
       </div>
     );
@@ -498,8 +500,8 @@ function TrainingPage() {
             <h2>🎯 PLL Recognition Training Setup</h2>
             <p>Select which PLL cases you want to practice recognizing</p>
           </div>
-          <button 
-            onClick={() => setDrawerOpen(true)} 
+          <button
+            onClick={() => setDrawerOpen(true)}
             className="reference-button"
             title="View PLL reference and visualizer"
           >
@@ -542,7 +544,7 @@ function TrainingPage() {
         )}
 
         <div className="start-section">
-          <button 
+          <button
             onClick={startTraining}
             disabled={selectedPLLs.length === 0 || loading}
             className="start-button"
@@ -566,9 +568,9 @@ function TrainingPage() {
       </div>
 
       {/* PLL Hint Drawer */}
-      <PLLHintDrawer 
-        isOpen={drawerOpen} 
-        onClose={() => setDrawerOpen(false)} 
+      <PLLHintDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       />
     </div>
   );

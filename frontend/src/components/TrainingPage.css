@@ -284,9 +284,23 @@
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
+/* Side-by-side layout for cube and answers */
+.training-content {
+  display: flex;
+  gap: 3rem;
+  align-items: flex-start;
+  margin-top: 2rem;
+}
+
 .cube-display {
+  flex: 1;
   text-align: center;
-  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+.answer-section {
+  flex: 1;
+  min-width: 300px;
 }
 
 .training-cube-image {
@@ -903,5 +917,19 @@
   .feedback.incorrect .feedback-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* Stack cube and answers vertically on mobile */
+  .training-content {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .cube-display {
+    max-width: 100%;
+  }
+
+  .answer-section {
+    min-width: unset;
   }
 }
