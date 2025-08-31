@@ -13,7 +13,7 @@ A full-stack application for visualizing Rubik's cube states using moves and PLL
 ### Frontend (React)
 - **Interactive UI**: Modern, responsive interface
 - **Move Input**: Enter standard cube notation
-- **PLL Selection**: Choose from 22 available PLL cases
+- **PLL Selection**: Choose from 21 available PLL cases
 - **Real-time Visualization**: Instant cube state rendering
 - **Tabbed Interface**: Switch between move input and PLL selection
 
