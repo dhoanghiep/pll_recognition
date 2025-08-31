@@ -46,6 +46,7 @@ function TrainingPage() {
   // Keyboard input state
   const [keyboardInput, setKeyboardInput] = useState('');
   const [keyboardTimeout, setKeyboardTimeout] = useState(null);
+  const [regenerateTimeout, setRegenerateTimeout] = useState(null);
 
   // Load available PLLs on component mount
   useEffect(() => {
@@ -84,17 +85,30 @@ function TrainingPage() {
       if (keyboardTimeout) {
         clearTimeout(keyboardTimeout);
       }
+      if (regenerateTimeout) {
+        clearTimeout(regenerateTimeout);
+      }
     };
-  }, [feedbackTimeout, keyboardTimeout]);
+  }, [feedbackTimeout, keyboardTimeout, regenerateTimeout]);
 
-  // Keyboard event handler
+  // Keyboard event handler - RESTRICTED VERSION
   useEffect(() => {
     const handleKeyPress = (event) => {
       if (!trainingMode || !currentQuestion) return;
 
+      // Don't handle keyboard events if user is interacting with form elements
+      const target = event.target;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' ||
+        target.contentEditable === 'true' || target.isContentEditable ||
+        target.closest('input[type="range"]') || target.closest('.training-angle-controls') ||
+        target.closest('.training-view-controls') || target.closest('.answer-section')) {
+        return;
+      }
+
+      // Only handle specific keys for PLL input and navigation
       const key = event.key.toLowerCase();
-      
-      // Handle Enter key for continue
+
+      // Handle Enter key for continue (only in feedback mode)
       if (key === 'enter' && feedback) {
         event.preventDefault();
         if (feedback.isCorrect) {
@@ -105,15 +119,20 @@ function TrainingPage() {
         return;
       }
 
-      // Handle Backspace/Delete key for try again
+      // Handle Backspace/Delete key for try again (only in feedback mode)
       if (key === 'backspace' && feedback && !feedback.isCorrect) {
         event.preventDefault();
         tryAgain();
         return;
       }
 
-      // Handle PLL case input (only when not in feedback mode)
+      // Handle PLL case input (only when not in feedback mode and not loading)
       if (!feedback && !loading) {
+        // Only handle letter keys and hyphen for PLL names
+        if (!/^[a-z-]$/.test(key)) {
+          return;
+        }
+
         // Clear previous timeout
         if (keyboardTimeout) {
           clearTimeout(keyboardTimeout);
@@ -246,7 +265,7 @@ function TrainingPage() {
       if (result.is_correct && result.next_question) {
         // Store the next question for immediate access
         setPendingNextQuestion(result.next_question);
-        
+
         // Set timeout as fallback (still auto-proceed if user doesn't click)
         const timeoutId = setTimeout(() => {
           proceedToNextQuestion();
@@ -255,7 +274,7 @@ function TrainingPage() {
       } else if (!result.is_correct) {
         // Allow user to try again
         setUserAnswer('');
-        
+
         // Set timeout as fallback (auto-proceed to next question if user doesn't click)
         const timeoutId = setTimeout(() => {
           proceedToNextQuestion();
@@ -332,12 +351,34 @@ function TrainingPage() {
 
   const handleTrainingElevChange = (newElev) => {
     setTrainingElev(newElev);
-    regenerateCurrentPlot(newElev, trainingAzim);
+    
+    // Clear previous timeout
+    if (regenerateTimeout) {
+      clearTimeout(regenerateTimeout);
+    }
+    
+    // Debounce the regeneration
+    const timeoutId = setTimeout(() => {
+      regenerateCurrentPlot(newElev, trainingAzim);
+    }, 100); // 100ms delay
+    
+    setRegenerateTimeout(timeoutId);
   };
 
   const handleTrainingAzimChange = (newAzim) => {
     setTrainingAzim(newAzim);
-    regenerateCurrentPlot(trainingElev, newAzim);
+    
+    // Clear previous timeout
+    if (regenerateTimeout) {
+      clearTimeout(regenerateTimeout);
+    }
+    
+    // Debounce the regeneration
+    const timeoutId = setTimeout(() => {
+      regenerateCurrentPlot(trainingElev, newAzim);
+    }, 100); // 100ms delay
+    
+    setRegenerateTimeout(timeoutId);
   };
 
   const proceedToNextQuestion = async () => {
@@ -355,7 +396,7 @@ function TrainingPage() {
         return;
       }
     }
-    
+
     setUserAnswer('');
     setFeedback(null);
     setKeyboardInput(''); // Clear keyboard input
@@ -472,7 +513,6 @@ function TrainingPage() {
                     value={trainingElev}
                     onChange={(e) => handleTrainingElevChange(parseInt(e.target.value))}
                     className="training-angle-slider"
-                    disabled={regeneratingPlot}
                   />
                 </div>
                 <div className="training-angle-control">
@@ -485,7 +525,6 @@ function TrainingPage() {
                     value={trainingAzim}
                     onChange={(e) => handleTrainingAzimChange(parseInt(e.target.value))}
                     className="training-angle-slider"
-                    disabled={regeneratingPlot}
                   />
                 </div>
                 <button
@@ -518,7 +557,7 @@ function TrainingPage() {
 
               <div className="answer-section">
                 <h3>Which PLL case is this?</h3>
-                
+
                 {/* Keyboard input indicator */}
                 {keyboardInput && (
                   <div className="keyboard-input-indicator">

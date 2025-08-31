@@ -84,7 +84,7 @@ The app supports all 21 PLL cases:
 ## Project Structure
 
 ```
-pll_recognization/
+pll_recognition/
 ├── cube/                 # Core cube logic
 │   ├── cube.py          # Cube class with 3D plotting
 │   ├── cubie.py         # Individual cube piece logic
