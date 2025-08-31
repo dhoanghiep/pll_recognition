@@ -39,6 +39,10 @@ function TrainingPage() {
   const [trainingAzim, setTrainingAzim] = useState(45);
   const [regeneratingPlot, setRegeneratingPlot] = useState(false);
 
+  // Next question state
+  const [pendingNextQuestion, setPendingNextQuestion] = useState(null);
+  const [feedbackTimeout, setFeedbackTimeout] = useState(null);
+
   // Load available PLLs on component mount
   useEffect(() => {
     const fetchPLLs = async () => {
@@ -66,6 +70,15 @@ function TrainingPage() {
     }
     return () => clearInterval(interval);
   }, [trainingMode, startTime, feedback]);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeout) {
+        clearTimeout(feedbackTimeout);
+      }
+    };
+  }, [feedbackTimeout]);
 
   const handlePLLToggle = (pll) => {
     setSelectedPLLs(prev => 
@@ -145,22 +158,23 @@ function TrainingPage() {
       });
 
       if (result.is_correct && result.next_question) {
-        // Prepare for next question
-        setTimeout(() => {
-          setCurrentQuestion(result.next_question);
-          setUserAnswer('');
-          setFeedback(null);
-          setStartTime(Date.now());
-          setTimerDisplay('0.00');
+        // Store the next question for immediate access
+        setPendingNextQuestion(result.next_question);
+        
+        // Set timeout as fallback (still auto-proceed if user doesn't click)
+        const timeoutId = setTimeout(() => {
+          proceedToNextQuestion();
         }, 2000); // Show feedback for 2 seconds
+        setFeedbackTimeout(timeoutId);
       } else if (!result.is_correct) {
         // Allow user to try again
         setUserAnswer('');
-        setTimeout(() => {
-          setFeedback(null);
-          setStartTime(Date.now());
-          setTimerDisplay('0.00');
+        
+        // Set timeout as fallback (still auto-proceed if user doesn't click)
+        const timeoutId = setTimeout(() => {
+          tryAgain();
         }, 3000); // Show feedback for 3 seconds
+        setFeedbackTimeout(timeoutId);
       }
 
     } catch (err) {
@@ -172,6 +186,12 @@ function TrainingPage() {
   };
 
   const endTraining = async () => {
+    // Clear any pending timeouts
+    if (feedbackTimeout) {
+      clearTimeout(feedbackTimeout);
+      setFeedbackTimeout(null);
+    }
+
     if (sessionId) {
       try {
         await axios.post(`${API_BASE_URL}/training/end_session/${sessionId}`);
@@ -192,6 +212,7 @@ function TrainingPage() {
     setUserAnswer('');
     setStartTime(null);
     setTimerDisplay('0.00');
+    setPendingNextQuestion(null);
   };
 
   const resetSession = () => {
@@ -230,6 +251,36 @@ function TrainingPage() {
   const handleTrainingAzimChange = (newAzim) => {
     setTrainingAzim(newAzim);
     regenerateCurrentPlot(trainingElev, newAzim);
+  };
+
+  const proceedToNextQuestion = () => {
+    if (pendingNextQuestion) {
+      setCurrentQuestion(pendingNextQuestion);
+      setPendingNextQuestion(null);
+    }
+    setUserAnswer('');
+    setFeedback(null);
+    setStartTime(Date.now());
+    setTimerDisplay('0.00');
+    
+    // Clear any existing timeout
+    if (feedbackTimeout) {
+      clearTimeout(feedbackTimeout);
+      setFeedbackTimeout(null);
+    }
+  };
+
+  const tryAgain = () => {
+    setUserAnswer('');
+    setFeedback(null);
+    setStartTime(Date.now());
+    setTimerDisplay('0.00');
+    
+    // Clear any existing timeout
+    if (feedbackTimeout) {
+      clearTimeout(feedbackTimeout);
+      setFeedbackTimeout(null);
+    }
   };
 
   if (sessionStats) {
@@ -391,7 +442,15 @@ function TrainingPage() {
                 <div className="feedback-text">
                   <h3>Correct!</h3>
                   <p>You got <strong>{feedback.correctAnswer}</strong> in <strong>{feedback.reactionTime.toFixed(2)}s</strong></p>
-                  <p>Loading next question...</p>
+                  <div className="feedback-actions">
+                    <button 
+                      onClick={proceedToNextQuestion}
+                      className="next-question-button"
+                    >
+                      ➡️ Next Question
+                    </button>
+                    <p className="auto-progress-text">Auto-advancing in 2 seconds...</p>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -401,7 +460,21 @@ function TrainingPage() {
                   <h3>Incorrect</h3>
                   <p>You selected: <strong>{feedback.userAnswer}</strong></p>
                   <p>Correct answer: <strong>{feedback.correctAnswer}</strong></p>
-                  <p>Try again in a moment...</p>
+                  <div className="feedback-actions">
+                    <button 
+                      onClick={tryAgain}
+                      className="try-again-button"
+                    >
+                      🔄 Try Again
+                    </button>
+                    <button 
+                      onClick={proceedToNextQuestion}
+                      className="next-question-button"
+                    >
+                      ➡️ Next Question
+                    </button>
+                    <p className="auto-progress-text">Auto-resuming in 3 seconds...</p>
+                  </div>
                 </div>
               </div>
             )}
