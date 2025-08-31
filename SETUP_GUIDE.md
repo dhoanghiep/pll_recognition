@@ -130,7 +130,7 @@ npm start
 
 ## 📁 Project Structure
 ```
-rubiks/
+pll_recognization/
 ├── cube/                 # Core cube logic
 ├── models/              # Pydantic models
 ├── routers/             # FastAPI endpoints
